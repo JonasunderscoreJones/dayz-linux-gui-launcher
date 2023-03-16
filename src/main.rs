@@ -36,15 +36,20 @@ fn setup(config_dir: &String, local_dir: &String) {
 
     if !Path::new(config_dir).exists() {
         println!("Config directory missing! Creating directory: {}", config_dir);
-        fs::create_dir_all(config_dir);
+        create_dir(config_dir);
         create_config_file(config_dir);
     }
     if !Path::new(local_dir).exists() {
         println!("Local directory missing! Creating directory: {}", local_dir);
-        fs::create_dir_all(local_dir);
+        create_dir(local_dir);
         //TODO: fetch ./dayzslauncher.sh from github
     }
 
+}
+
+fn create_dir(dir: &String) -> std::io::Result<()> {
+    fs::create_dir_all(dir)?;
+    Ok(())
 }
 
 fn create_config_file(config_dir: &String) {
@@ -254,7 +259,6 @@ impl Default for DayzLinuxGuiLauncher {
     }
 }
 
-
 fn return_defaults() -> Result<(), String> {
     // read config file
     let config_dir = UserDirs::new().unwrap().home_dir().to_str().unwrap().to_string() + "/.config/dayz-linux-gui-launcher";
@@ -383,6 +387,44 @@ impl eframe::App for DayzLinuxGuiLauncher {
                 if ui.button("Launch").clicked() {
                     launch(&self.playername, &self.serverip, &self.serverport, &self.queryport, &self.steamexe.to_string(), &self.customsteamexe.as_ref().unwrap());
                 }
+                if ui.button("Load Profile").clicked() {
+                    egui::Window::new("Select Profile")
+                    .collapsible(false)
+                    .resizable(false)
+                    .show(ctx, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.label("Profile name: ");
+                            // get all profiles from config file
+                            let mut profiles: Vec<String> = Vec::new();
+                            // read config file
+                            let config_dir = UserDirs::new().unwrap().home_dir().to_str().unwrap().to_string() + "/.config/dayz-linux-gui-launcher";
+                            let config_file = config_dir.to_string() + "/config.toml";
+                            let config = fs::read_to_string(config_file).expect("Unable to read file");
+
+                            // parse config file
+                            let mut config: toml::value::Table = toml::from_str(&config).unwrap();
+
+                            let mut profilename = "empty".to_string();
+
+                            // get profiles
+                            let profiles_table = config.get_mut("profiles").unwrap().as_table_mut().unwrap();
+                            for (key, value) in profiles_table {
+                                profiles.push(key.to_string());
+                            }
+
+                            // add profiles to dropdown
+                            egui::ComboBox::from_id_source("profile").selected_text(&profiles[0]).show_ui(ui, |ui| {
+                                for profile in profiles.iter() {
+                                    ui.selectable_value(&mut profilename, profile.to_string(), &*profile);
+                                }
+                            });
+                        });
+                    });
+                }
+                if ui.button("Save Profile").clicked() {
+                    let config_dir = UserDirs::new().unwrap().home_dir().to_str().unwrap().to_string() + "/.config/dayz-linux-gui-launcher";
+                    save_new_profile(&config_dir, &self.profilename, &self.playername, &self.serverip, &self.serverport, &self.queryport, &self.steamexe.to_string(), &self.customsteamexe.as_ref().unwrap())
+                }
             });
     });
     }
@@ -475,12 +517,7 @@ fn title_bar_ui(
             ui.add_space(370.0);
             ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
 
-                if ui.add(egui::Button::new("Launch!")).clicked() {
-                    println!("launch");
-                }
-                if ui.add(egui::Button::new("Save Config")).clicked() {
-                    println!("save config");
-                }
+                
                 if ui.add(egui::Button::new("Load Config")).clicked() {
                     egui::Window::new("Select Profile")
                     .collapsible(false)
