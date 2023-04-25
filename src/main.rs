@@ -10,9 +10,9 @@ use std::fmt;
 
 fn main() -> Result<(), eframe::Error> {
     let config_dir = UserDirs::new().unwrap().home_dir().to_str().unwrap().to_string() + "/.config/dayz-linux-gui-launcher";
-    let local_dir = UserDirs::new().unwrap().home_dir().to_str().unwrap().to_string() + "/.local/share/dayz-linux-gui-launcher";
+    let dayz_cli_script = "/usr/bin";
     // run the setup function
-    setup(&config_dir, &local_dir);
+    setup(&config_dir, &dayz_cli_script.to_string());
     let options = eframe::NativeOptions {
         // Hide the OS-specific "chrome" around the window:
         decorated: false,
@@ -138,9 +138,9 @@ fn load_profile(config_dir: &String, profile_name: &String) -> (String, String, 
 
 fn launch(playername: &String, serverip: &String, serverport: &String, queryport: &String, steamexe: &String, customsteamexe: &String) {
     // command structure: ./dayz-launcher.sh --steam <"" if default | flatpak if Flatpak | "/path/to/executable" if custom> --launch --name <playername> --server serverip:serverport --port <queryport>
-    let local_dir = UserDirs::new().unwrap().home_dir().to_str().unwrap().to_string() + "/.local/share/dayz-linux-gui-launcher";
+    let dayz_cli_script = "/usr/bin";
     // create command
-    let mut command = Command::new(local_dir + "/dayz-launcher.sh");
+    let mut command = Command::new(dayz_cli_script.to_string() + "/dayz-launcher");
     if steamexe == "default" {
         command.arg("\"\"");
     } else if steamexe == "flatpak" {
