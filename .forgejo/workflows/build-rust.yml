@@ -1,0 +1,44 @@
+name: build-rust
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: docker
+    steps:
+      - name: checkout repository
+        uses: https://code.forgejo.org/actions/checkout@v4
+
+      - name: install Rust toolchain
+        uses: https://github.com/actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: restore cached cargo dependencies
+        uses: https://code.forgejo.org/actions/cache/restore@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+
+      - name: build project
+        run: cargo build --release
+
+      - name: upload compiled binary
+        uses: https://code.forgejo.org/forgejo/upload-artifact@v4
+        with:
+          name: rust-binary
+          path: target/release/<your_binary_name>
+          if-no-files-found: error
+
+      - name: cache cargo dependencies
+        if: ${{ github.ref_name == github.event.repository.default_branch }}
+        uses: https://code.forgejo.org/actions/cache/save@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
