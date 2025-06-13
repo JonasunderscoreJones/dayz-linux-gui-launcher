@@ -1,0 +1,19 @@
+name: build-rust
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust
+        run: curl https://sh.rustup.rs -sSf | sh -s -- -y
+
+      - name: Build project
+        run: ~/.cargo/bin/cargo build --release

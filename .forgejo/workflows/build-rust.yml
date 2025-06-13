@@ -4,15 +4,35 @@ on: [push, pull_request]
 jobs:
   build:
     runs-on: docker
+    strategy:
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - x86_64-pc-windows-gnu
+          - x86_64-apple-darwin
+
     steps:
       - name: checkout repository
         uses: https://code.forgejo.org/actions/checkout@v4
+
+      - name: install dependencies for metadata parsing
+        run: apt-get update && apt-get install -y jq mingw-w64 clang curl libssl-dev libbz2-dev libz-dev libffi-dev
 
       - name: install Rust toolchain
         uses: https://github.com/actions-rs/toolchain@v1
         with:
           toolchain: stable
           override: true
+          components: rust-src
+
+      - name: add cross-compilation target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: get binary name
+        id: binary_name
+        run: |
+          name=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[0].name')
+          echo "binary_name=$name" >> $GITHUB_OUTPUT
 
       - name: restore cached cargo dependencies
         uses: https://code.forgejo.org/actions/cache/restore@v4
@@ -21,16 +41,16 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}-${{ matrix.target }}
 
-      - name: build project
-        run: cargo build --release
+      - name: build project for target
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: upload compiled binary
         uses: https://code.forgejo.org/forgejo/upload-artifact@v4
         with:
-          name: rust-binary
-          path: target/release/<your_binary_name>
+          name: rust-binary-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release/${{ steps.binary_name.outputs.binary_name }}
           if-no-files-found: error
 
       - name: cache cargo dependencies
@@ -41,4 +61,4 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('Cargo.lock') }}-${{ matrix.target }}
